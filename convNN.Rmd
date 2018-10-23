@@ -1,0 +1,79 @@
+---
+title: "Untitled"
+output: html_document
+---
+```{r}
+install.packages("devtools")
+install.packages("keras")
+install.packages("tensorflow")
+install.packages("dplyr")
+install_keras()
+knitr::opts_chunk$set(echo = TRUE)
+
+library(keras)
+library(tensorflow)
+library(dplyr)
+```
+
+
+```{r}
+cifar<-keras::dataset_cifar10()
+
+train_x <- (cifar$train$x/255)
+train_x <- train_x[1:50000, 1:32, 1:32, 1:3]
+train_y <- keras::to_categorical(cifar$train$y[1:50000],num_classes = 10)
+test_x <- (cifar$test$x/255)
+test_x <- test_x[1:10000, 1:32, 1:32, 1:3]
+test_y<-keras::to_categorical(cifar$test$y[1:10000],num_classes=10) 
+dim(train_x) =
+```
+
+```{r}
+model<-keras::keras_model_sequential()
+model %>%  
+keras::layer_conv_2d(filter=32,kernel_size=c(3,3),padding="same", input_shape=c(32,32,3) ) %>%  
+keras::layer_activation("relu") %>%  
+keras::layer_conv_2d(filter=32 ,kernel_size=c(3,3))  %>%  keras::layer_activation("relu") %>%
+keras::layer_max_pooling_2d(pool_size=c(2,2)) %>%  
+keras::layer_dropout(0.25) %>%
+keras::layer_conv_2d(filter=32 , kernel_size=c(3,3),padding="same") %>% keras::layer_activation("relu") %>%  keras::layer_conv_2d(filter=32,kernel_size=c(3,3) ) %>%  keras::layer_activation("relu") %>%  
+keras::layer_max_pooling_2d(pool_size=c(2,2)) %>%  
+keras::layer_dropout(0.25) %>%
+keras::layer_flatten() %>%  
+keras::layer_dense(512) %>%  
+keras::layer_activation("relu") %>%  
+keras::layer_dropout(0.5) %>%  
+keras::layer_dense(10) %>%  
+keras::layer_activation("softmax") 
+```
+
+
+```{r}
+opt<-keras::optimizer_adam( lr= 0.0001 , decay = 1e-6 )
+model %>%
+ keras::compile(loss="categorical_crossentropy",
+ optimizer=opt,metrics = "accuracy")
+summary(model)
+```
+
+```{r}
+data_augmentation <- TRUE  
+if(!data_augmentation) {  
+model %>% fit( train_x,train_y ,batch_size=32,
+               epochs=25,validation_data = list(test_x, test_y),
+               shuffle=TRUE)
+} else {  
+gen_images <- keras::image_data_generator(featurewise_center = TRUE,
+      featurewise_std_normalization = TRUE,
+      rotation_range = 20,
+      width_shift_range = 0.30,
+      height_shift_range = 0.30,
+      horizontal_flip = TRUE  )
+gen_images %>% keras::fit_image_data_generator(train_x)
+model %>% keras::fit_generator(
+     keras::flow_images_from_data(train_x, train_y,gen_images,
+     batch_size=32,save_to_dir="/Users/romanismagilov/Desktop/DL"),
+     steps_per_epoch=as.integer(50000/32),epochs = 25,
+     validation_data = list(test_x, test_y) )
+}
+```

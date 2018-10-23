@@ -1,0 +1,52 @@
+---
+title: "basic nn"
+output: html_document
+---
+
+```{r}
+install.packages('ISLR')
+install.packages('neuralnet')
+install.packages("lmtest")
+```
+```{r}
+library(ISLR)
+maxs <- apply(Credit[,c(2:7,12)], 2, max)
+mins <- apply(Credit[,c(2:7,12)], 2, min)
+normalized <- as.data.frame(scale(Credit[,c(2:7,12)],center = mins, scale = maxs - mins))
+Gender<-as.numeric(Credit$Gender)-1
+Student<-as.numeric(Credit$Student)-1
+Married<-as.numeric(Credit$Married)-1
+dataset = cbind(Gender,normalized)
+dataset = cbind(Student,dataset)
+dataset = cbind(Married,dataset)
+str(dataset)
+```
+
+```{r}
+library(caTools)
+set.seed(322)
+
+split = sample.split(dataset$Balance, SplitRatio = 0.70)
+
+train = subset(dataset, split == TRUE)
+test = subset(dataset, split == FALSE)
+```
+
+```{r}
+feats <- names(dataset[-c(10)])
+
+f <- paste(feats,collapse=' + ')
+f <- paste('Balance ~',f)
+
+f <- as.formula(f)
+f
+```
+
+```{r}
+library(neuralnet)
+nn <- neuralnet(f,train,hidden=c(2,6),linear.output=FALSE)
+
+result <- compute(nn,test[1:9])$net.result
+
+abs(test$Balance - result) %>% sum / length(result)
+```
